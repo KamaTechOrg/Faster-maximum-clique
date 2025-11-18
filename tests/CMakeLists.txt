@@ -14,23 +14,33 @@ FetchContent_MakeAvailable(googletest)
 # Enable testing
 enable_testing()
 
-# Add test executable for algorithm5 helper functions
-add_executable(test_algorithm5_helpers
-    test_top_k_by_degree.cpp
+# Collect all test files
+set(TEST_SOURCES
+    test_top_k.cpp
+    test_candidate_ops.cpp
+    test_intersect.cpp
+    test_k_core.cpp
+    test_ordering.cpp
+    test_heuristics.cpp
+    test_search.cpp
 )
 
-# Link against gtest and algorithm includes
-target_link_libraries(test_algorithm5_helpers
+# Create test executable
+add_executable(lazymc_tests ${TEST_SOURCES})
+
+# Link against gtest and lazymc
+target_link_libraries(lazymc_tests
     PRIVATE
     gtest_main
     gtest
+    lazymc
 )
 
-target_include_directories(test_algorithm5_helpers
+target_include_directories(lazymc_tests
     PRIVATE
-    ${CMAKE_SOURCE_DIR}/algorithms
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 # Discover tests
 include(GoogleTest)
-gtest_discover_tests(test_algorithm5_helpers)
+gtest_discover_tests(lazymc_tests)
