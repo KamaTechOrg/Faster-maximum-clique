@@ -29,10 +29,23 @@ namespace lazymc {
 /// \brief מציאת קליקה מקסימלית בגרף
 /// \param adj רשימת שכנויות
 /// \return וקטור של אינדקסי קודקודים בקליקה המקסימלית
-inline std::vector<int> find_maximum_clique(
-    const std::vector<std::vector<int>>& adj) 
-{
-    return search::MaxCliqueSearch::find_max_clique(adj);
-}
+
+struct LazyMCConfig {
+    int K_top_degree = 64;
+    double phi_density = 0.5; // הפרמטר φ מאלגוריתם 8
+    // פרמטרים נוספים בעתיד...
+};
+
+struct LazyMCResult {
+    std::vector<int> clique;
+    double runtime_seconds;
+};
+
+LazyMCResult run(const graph::Graph& G, const LazyMCConfig& cfg);
+
+/// \brief פונקציה פשוטה למציאת קליקה מקסימלית (לשימוש ב-CLI)
+/// \param adj רשימת שכנויות
+/// \return וקטור של אינדקסי קודקודים בקליקה המקסימלית
+std::vector<int> find_maximum_clique(const std::vector<std::vector<int>>& adj);
 
 } // namespace lazymc

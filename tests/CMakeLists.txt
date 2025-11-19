@@ -23,6 +23,7 @@ set(TEST_SOURCES
     test_ordering.cpp
     test_heuristics.cpp
     test_search.cpp
+    test_filter_N.cpp
 )
 
 # Create test executable

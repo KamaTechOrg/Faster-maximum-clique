@@ -4,6 +4,24 @@
 #include <vector>
 
 namespace lazymc {
+
+// Forward declaration
+namespace graph {
+    class Graph;
+}
+
+/// N ← N ∩ NG(u), כולל עדכון inN
+void filter_N(
+    std::vector<int>& N,
+    std::vector<char>& inN,
+    int u,
+    const graph::Graph& G
+);
+
+/// inN[v] = 1 אם v ב-N
+void rebuild_inN(std::vector<char>& inN,
+                 const std::vector<int>& N);
+
 namespace core {
 
 /// \brief פעולות על מועמדים לקליקה
