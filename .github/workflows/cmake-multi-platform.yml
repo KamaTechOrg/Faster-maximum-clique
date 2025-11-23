@@ -1,0 +1,32 @@
+name: CMake on self-hosted MSYS2
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Configure CMake (inside LazyMC)
+        working-directory: LazyMC
+        run: >
+          cmake -S . -B build
+          -G "Ninja"
+          -DCMAKE_CXX_COMPILER="C:\msys64\mingw64\bin\g++.exe"
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+
+      - name: Build
+        working-directory: LazyMC
+        run: cmake --build build
+
+      - name: Run tests (ctest)
+        working-directory: LazyMC
+        run: ctest --test-dir build
