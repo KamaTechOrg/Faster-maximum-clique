@@ -2,9 +2,9 @@ name: CMake on self-hosted MSYS2
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "yitzikbarzel-patch-1" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "yitzikbarzel-patch-1" ]
 
 jobs:
   build:
