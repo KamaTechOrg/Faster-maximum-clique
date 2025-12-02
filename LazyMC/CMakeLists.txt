@@ -16,14 +16,14 @@ endif()
 # ---- Library ----
 add_library(lazymc STATIC
   src/bk.cpp
-  src/corness_based_heuristic.cpp
+  src/coreness_based_heuristic.cpp
   src/degree_based_heuristic.cpp
   src/intersect_functions.cpp
   src/k_vertex_cover.cpp
   src/lazygraph.cpp
   src/lazymc.cpp
-  src/NeighborSearch.cpp
-  src/Systematic_search.cpp
+  src/neighbor_search.cpp
+  src/systematic_search.cpp
   src/graph_processing.cpp
 )
 

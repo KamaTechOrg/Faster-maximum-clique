@@ -1,4 +1,5 @@
 #include <iostream>
+#include "lazymc/lazymc.h"
 #include "lazymc/bk.h"
 
 using lazymc::AdjMap;

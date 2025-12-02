@@ -1,5 +1,4 @@
-#include <vector>
-#include <cstdint>
+#include "lazymc/degree_based_heuristic.h"
 #include <algorithm>
 #include <unordered_set>
 

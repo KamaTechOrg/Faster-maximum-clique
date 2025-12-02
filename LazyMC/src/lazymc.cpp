@@ -1,19 +1,8 @@
-#include <vector>
-#include <cstdint>
+#include "lazymc/lazymc.h"
+#include "lazymc/degree_based_heuristic.h"
 #include <chrono>
 
 namespace lazymc {
-
-// Forward declarations
-std::vector<int32_t> degree_based_heuristic(
-    const std::vector<std::vector<int32_t>>& G, 
-    int top_k);
-
-struct MCResult { 
-    std::vector<int32_t> clique; 
-    int64_t nodes = 0; 
-    double ms = 0.0; 
-};
 
 MCResult run_lazymc(const std::vector<std::vector<int32_t>>& G) {
     auto start = std::chrono::high_resolution_clock::now();
