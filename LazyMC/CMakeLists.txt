@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
+
+# Use old behavior for FetchContent_Populate(mcqd) and silence CMP0169 warning
+if(POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
+endif()
 project(LazyMC LANGUAGES CXX)
 
 # ---- Options ----

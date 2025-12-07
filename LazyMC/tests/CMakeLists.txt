@@ -7,6 +7,7 @@ add_executable(lazymc_tests
   test_NeighborSearch.cpp
   test_k_vertex_cover.cpp
   test_degree_heuristic.cpp
+  test_intersect_functions.cpp
 )
 
 target_link_libraries(lazymc_tests
