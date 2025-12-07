@@ -2,13 +2,17 @@
 
 #include <vector>
 #include <map>
+#include <unordered_map>
+
 
 namespace lazymc {
 
 /// Adjacency map type:
 /// - key: vertex id (int)
 /// - value: list of neighbors (each neighbor is an int as well)
-using AdjMap = std::map<int, std::vector<int>>;
+
+using AdjMap = std::unordered_map<int, std::vector<int>>;
+
 
 /// Bron–Kerbosch algorithm: enumerate all maximal cliques.
 /// - Input: undirected simple graph represented as an adjacency map.

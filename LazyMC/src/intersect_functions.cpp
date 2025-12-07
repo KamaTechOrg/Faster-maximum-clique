@@ -1,89 +1,100 @@
-// Fast intersection helpers:
-//  - If inputs are unsorted: use hash of the smaller set (average O(n)).
-//  - If inputs are known sorted: a two-pointer sweep is faster and cache-friendly.
-
 #include <vector>
 #include <cstdint>
 #include <unordered_set>
-#include <algorithm>
+
 
 namespace lazymc {
 
-static inline int intersect_size_hash(const std::vector<int32_t>& A,
-                                      const std::vector<int32_t>& B) {
-  // Build hash on the smaller vector to reduce memory & collisions
-  const std::vector<int32_t>& small = (A.size() <= B.size()) ? A : B;
-  const std::vector<int32_t>& large = (A.size() <= B.size()) ? B : A;
+// INTERSECT-GT(A, B, C, θ)
+// A: array (vector)
+// B: hash table (unordered_set)
+// C: output array, intersection elements will be written at the front
+// θ: threshold
+// Returns: size of intersection if > θ, or -1 if intersection size ≤ θ.
+int32_t intersect_gt(const std::vector<int32_t>& A,
+                     const std::unordered_set<int32_t>& B,
+                     std::vector<int32_t>& C,
+                     int32_t theta)
+{
+    // n = |A|; m = |B|
+    const int32_t n = static_cast<int32_t>(A.size());
+    const int32_t m = static_cast<int32_t>(B.size());
 
-  std::unordered_set<int32_t> H;
-  H.reserve(small.size());
-  for (int32_t x : small) H.insert(x);
-
-  int cnt = 0;
-  for (int32_t y : large) if (H.find(y) != H.end()) ++cnt;
-  return cnt;
-}
-
-static inline bool intersect_size_gt_hash(const std::vector<int32_t>& A,
-                                          const std::vector<int32_t>& B,
-                                          int t) {
-  // Early-exit once we exceed threshold t
-  const std::vector<int32_t>& small = (A.size() <= B.size()) ? A : B;
-  const std::vector<int32_t>& large = (A.size() <= B.size()) ? B : A;
-
-  std::unordered_set<int32_t> H;
-  H.reserve(small.size());
-  for (int32_t x : small) H.insert(x);
-
-  int cnt = 0;
-  for (int32_t y : large) {
-    if (H.find(y) != H.end() && ++cnt > t) return true;
-  }
-  return false;
-}
-
-static inline int intersect_size_twoptr(const std::vector<int32_t>& A,
-                                        const std::vector<int32_t>& B) {
-  // Requires BOTH A and B sorted ascending.
-  int i = 0, j = 0, cnt = 0;
-  while (i < (int)A.size() && j < (int)B.size()) {
-    if (A[i] == B[j]) { ++cnt; ++i; ++j; }
-    else if (A[i] < B[j]) { ++i; }
-    else { ++j; }
-  }
-  return cnt;
-}
-
-static inline bool intersect_size_gt_twoptr(const std::vector<int32_t>& A,
-                                            const std::vector<int32_t>& B,
-                                            int t) {
-  // Requires BOTH A and B sorted ascending.
-  int i = 0, j = 0, cnt = 0;
-  while (i < (int)A.size() && j < (int)B.size()) {
-    if (A[i] == B[j]) {
-      if (++cnt > t) return true;
-      ++i; ++j;
-    } else if (A[i] < B[j]) {
-      ++i;
-    } else {
-      ++j;
+    // if n < θ or m < θ then return -1
+    if (n < theta || m < theta) {
+        return -1;
     }
-  }
-  return false;
+
+    // h ← n − θ  (number of missing elements tolerated)
+    int32_t h = n - theta;
+
+    // C must be able to hold up to n elements of A
+    C.resize(static_cast<std::size_t>(n));
+
+    // for a ← 0 to n − 1 do
+    for (int32_t a = 0; a < n; ++a) {
+        int32_t val = A[static_cast<std::size_t>(a)];
+
+        // if !B.contains(A[a]) then
+        if (B.find(val) == B.end()) {
+            // h ← h − 1
+            --h;
+            // if h ≤ 0 then return −1  (exit early)
+            if (h <= 0) {
+                return -1;
+            }
+        } else {
+            // C[a + h − (n − θ)] ← A[a]
+            int32_t idx = a + h - (n - theta);
+            C[static_cast<std::size_t>(idx)] = val;
+        }
+    }
+
+    // return h + θ   (this is exactly the intersection size)
+    return h + theta;
 }
 
+// INTERSECT-SIZE-GT-BOOL(A, B, θ)
+// Returns true if |A ∩ B| > theta, false otherwise.
+// A is provided as an array (vector) of length n,
+// B is provided as a hash table (unordered_set) of size m.
 bool intersect_size_gt_bool(const std::vector<int32_t>& A,
-                            const std::vector<int32_t>& B,
-                            int t) {
-  // Default to hash implementation (robust for unsorted inputs).
-  // If you GUARANTEE sorted inputs, prefer the two-pointer variant.
-  return intersect_size_gt_hash(A, B, t);
+                            const std::unordered_set<int32_t>& B,
+                            int32_t theta)
+{
+    //n = |A|; m = |B|
+    const int32_t n = static_cast<int32_t>(A.size());
+    const int32_t m = static_cast<int32_t>(B.size());
+
+    // if n ≤ θ or m ≤ θ then return false
+    if (n <= theta || m <= theta) {
+        return false;
+    }
+
+    // h ← n − θ  (number of missing elements tolerated)
+    int32_t h = n - theta;
+
+    // for a ← 0 to n − 1 do
+    for (int32_t a = 0; a < n; ++a) {
+        int32_t val = A[static_cast<std::size_t>(a)];
+
+        // if !B.contains(A[a]) then
+        if (B.find(val) == B.end()) {
+            // h ← h − 1
+            --h;
+            // if h ≤ 0 then return false  (exit early)
+            if (h <= 0) {
+                return false;
+            }
+        }
+        // else if h > n − a − 1 then return true  (exit early)
+        else if (h > n - a - 1) {
+            return true;
+        }
+    }
+
+    // Line 10: return h > 0
+    return h > 0;
 }
 
-int intersect_size(const std::vector<int32_t>& A,
-                   const std::vector<int32_t>& B) {
-  // Default to hash implementation.
-  return intersect_size_hash(A, B);
 }
-
-} // namespace lazymc
