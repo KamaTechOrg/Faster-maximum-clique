@@ -1,45 +1,64 @@
 #include <gtest/gtest.h>
-#include <vector>
-#include <cstdint>
 
-// Forward declaration
-namespace lazymc {
-    std::vector<int32_t> degree_based_heuristic(
-        const std::vector<std::vector<int32_t>>& G, 
-        int top_k);
+#include <cstdint>
+#include <vector>
+
+#include "lazymc/degree_heuristic.h"
+#include "lazymc/lazygraph.h"
+
+namespace {
+
+// Helper to build a LazyGraph with identity relabeling (H-ids == G-ids).
+lazymc::LazyGraph make_identity_lazygraph(const lazymc::AdjList& G) {
+    const int32_t n = static_cast<int32_t>(G.size());
+
+    std::vector<int32_t> relabel_to_original(n);
+    std::vector<int32_t> original_to_relabel(n);
+    std::vector<int32_t> core(n, 0);
+
+    for (int32_t i = 0; i < n; ++i) {
+        relabel_to_original[i] = i;
+        original_to_relabel[i] = i;
+    }
+
+    return lazymc::LazyGraph(G, relabel_to_original, original_to_relabel, core);
 }
 
+} // namespace
+
 TEST(DegreeBasedHeuristicTest, EmptyGraph) {
-    std::vector<std::vector<int32_t>> G;
-    auto result = lazymc::degree_based_heuristic(G, 5);
+    lazymc::AdjList G;
+    auto H = make_identity_lazygraph(G);
+    auto result = lazymc::degree_based_heuristic(H, 5);
     EXPECT_TRUE(result.empty());
 }
 
 TEST(DegreeBasedHeuristicTest, SingleVertex) {
-    std::vector<std::vector<int32_t>> G = {{}};
-    auto result = lazymc::degree_based_heuristic(G, 5);
+    lazymc::AdjList G = {{}};
+    auto H = make_identity_lazygraph(G);
+    auto result = lazymc::degree_based_heuristic(H, 5);
     EXPECT_EQ(result.size(), 1);
 }
 
 TEST(DegreeBasedHeuristicTest, Triangle) {
-    // Triangle: 0-1-2-0
-    std::vector<std::vector<int32_t>> G = {
-        {1, 2},  // vertex 0 neighbors
-        {0, 2},  // vertex 1 neighbors
-        {0, 1}   // vertex 2 neighbors
+    lazymc::AdjList G = {
+        {1, 2},
+        {0, 2},
+        {0, 1}
     };
-    auto result = lazymc::degree_based_heuristic(G, 3);
-    EXPECT_EQ(result.size(), 3);  // Should find the triangle clique
+    auto H = make_identity_lazygraph(G);
+    auto result = lazymc::degree_based_heuristic(H, 3);
+    EXPECT_EQ(result.size(), 3);
 }
 
 TEST(DegreeBasedHeuristicTest, K4Clique) {
-    // Complete graph K4: all vertices connected
-    std::vector<std::vector<int32_t>> G = {
-        {1, 2, 3},  // vertex 0
-        {0, 2, 3},  // vertex 1
-        {0, 1, 3},  // vertex 2
-        {0, 1, 2}   // vertex 3
+    lazymc::AdjList G = {
+        {1, 2, 3},
+        {0, 2, 3},
+        {0, 1, 3},
+        {0, 1, 2}
     };
-    auto result = lazymc::degree_based_heuristic(G, 4);
-    EXPECT_EQ(result.size(), 4);  // Should find the complete K4 clique
+    auto H = make_identity_lazygraph(G);
+    auto result = lazymc::degree_based_heuristic(H, 4);
+    EXPECT_EQ(result.size(), 4);
 }
