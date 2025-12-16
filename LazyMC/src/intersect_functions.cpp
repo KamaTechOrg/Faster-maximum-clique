@@ -10,7 +10,8 @@ namespace lazymc {
 // B: hash table (unordered_set)
 // C: output array, intersection elements will be written at the front
 // θ: threshold
-// Returns: size of intersection if > θ, or -1 if intersection size ≤ θ.
+// Caller must check (return_value > θ).
+.
 int32_t intersect_gt(const std::vector<int32_t>& A,
                      const std::unordered_set<int32_t>& B,
                      std::vector<int32_t>& C,
@@ -29,7 +30,9 @@ int32_t intersect_gt(const std::vector<int32_t>& A,
     int32_t h = n - theta;
 
     // C must be able to hold up to n elements of A
-    C.resize(static_cast<std::size_t>(n));
+    const std::size_t ns = static_cast<std::size_t>(n);
+    if (C.size() < ns) C.resize(ns);
+
 
     // for a ← 0 to n − 1 do
     for (int32_t a = 0; a < n; ++a) {
