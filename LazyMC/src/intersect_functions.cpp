@@ -11,7 +11,6 @@ namespace lazymc {
 // C: output array, intersection elements will be written at the front
 // θ: threshold
 // Caller must check (return_value > θ).
-.
 int32_t intersect_gt(const std::vector<int32_t>& A,
                      const std::unordered_set<int32_t>& B,
                      std::vector<int32_t>& C,
