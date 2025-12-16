@@ -154,64 +154,96 @@ void NeighborSearch(const std::vector<std::vector<int32_t>>& G,
     if (N.size() < best_clique_size) return;
 
     // -----------------------
-    // Filter 3 (Algorithm 3)
-    // -----------------------
-    N_set.clear();
-    N_set.insert(N.begin(), N.end());
+// Filter 3 (Algorithm 3) -- PASS 1: Filter strong neighbors
+// -----------------------
+N_set.clear();
+N_set.insert(N.begin(), N.end());
 
-    int64_t count_edge = 0;
-    std::vector<int32_t> tempN2;
-    std::vector<int32_t> C_temp;
+std::vector<int32_t> tempN2;
+std::vector<int32_t> C_temp;
 
-    for (int32_t u : N) {
-        int32_t d = intersect_gt(G[u], N_set, C_temp, best_clique_size - 2);
+// keep only strong vertices
+for (int32_t u : N) {
+    int32_t d = intersect_gt(G[u], N_set, C_temp, best_clique_size - 2);
 
-        if (d > best_clique_size - 2) {
-            tempN2.push_back(u);
-        }
-
-        if (d > 0) count_edge += d;
+    if (d > best_clique_size - 2) {
+        tempN2.push_back(u);
     }
+}
 
-    N = std::move(tempN2);
-    if (N.size() < best_clique_size) return;
+// finalize N
+N = std::move(tempN2);
+if (N.size() < best_clique_size) return;
 
-    // -----------------------
-    // Density decision
-    // -----------------------
-    double density = static_cast<double>(count_edge) /
-                     static_cast<double>(N.size() * (N.size() - 1));
 
-    if (density > phi) {
-        int32_t k = static_cast<int32_t>(N.size()) - best_clique_size;
+// -----------------------
+// PASS 2: Recompute density based ONLY on final N
+// -----------------------
+N_set.clear();
+N_set.insert(N.begin(), N.end());
 
-        k_vertex_cover_res res = k_vertex_cover_induced_complement(G, N, k);
-        if (res.aborted || !res.found) return;
+int64_t count_edge = 0;
+C_temp.clear();
 
-        int32_t m = static_cast<int32_t>(N.size());
-        std::vector<std::uint8_t> in_cover(m, 0);
+for (int32_t u : N) {
+    // threshold=0 → get full intersection size
+    int32_t d = intersect_gt(G[u], N_set, C_temp, 0);
+    if (d > 0) count_edge += d;
+}
 
-        for (int32_t idx : res.cover) {
-            if (idx >= 0 && idx < m) {
-                in_cover[static_cast<std::size_t>(idx)] = 1;
-            }
-        }
+double density = static_cast<double>(count_edge) /
+                 static_cast<double>(N.size() * (N.size() - 1));
 
-        int32_t clique_part = 0;
-        for (int i = 0; i < m; ++i) {
-            if (!in_cover[i]) clique_part++;
-        }
 
-        int32_t new_clique_size = clique_part + 1;
-        if (new_clique_size > best_clique_size) {
-            best_clique_size = new_clique_size;
-        }
+// -----------------------
+// if dense → use kVC on complement
+// -----------------------
+if (density > phi) {
+    int32_t k = static_cast<int32_t>(N.size()) - best_clique_size;
 
+    k_vertex_cover_res res =
+        k_vertex_cover_induced_complement(G, N, k);
+
+    // ------------------------
+    // FIXED DECISION LOGIC:
+    // ------------------------
+
+    // Case 1: aborted → WE MUST fallback to Bron–Kerbosch
+    if (res.aborted) {
+        maximum_clique_induced(G, N, v, best_clique_size);
         return;
     }
 
-    // fallback: run MC on induced graph
-    maximum_clique_induced(G, N, v, best_clique_size);
+    // Case 2: finished search and NO vertex cover → safe to conclude NO larger clique
+    if (!res.found) {
+        // do NOT fallback
+        return;
+    }
+
+    // Case 3: found vertex cover → compute clique size
+    int32_t m = static_cast<int32_t>(N.size());
+    std::vector<std::uint8_t> in_cover(m, 0);
+
+    for (int32_t idx : res.cover) {
+        if (idx >= 0 && idx < m) in_cover[idx] = 1;
+    }
+
+    int32_t clique_part = 0;
+    for (int i = 0; i < m; ++i) {
+        if (!in_cover[i]) clique_part++;
+    }
+
+    int32_t new_size = clique_part + 1;
+    if (new_size > best_clique_size) {
+        best_clique_size = new_size;
+    }
+
+    return;
 }
 
-} // namespace lazymc
+// -----------------------
+// Not dense: RUN FALLBACK ALWAYS
+// -----------------------
+maximum_clique_induced(G, N, v, best_clique_size);
+}
+}

@@ -154,6 +154,59 @@ TEST(NeighborSearchFilter2, KeepsVerticesWithLargeIntersection) {
 // Both tests use K4 so the true maximum clique size is 4.
 //
 
+
+// NEW: Exercise the path where Filter 3 drops some vertices but |N| remains >= best_clique_size.
+TEST(NeighborSearchFilter3, ShrinksNButKeepsEnoughVerticesAndFindsClique) {
+    // Graph:
+    // 0 is the root.
+    // Initial N(0) = {1,2,3,4,5}.
+    // Vertices {1,2,3} form a K3 (triangle).
+    // 4 is connected only to 1 (inside N).
+    // 5 is connected only to 2 (inside N).
+    //
+    // The intention is that Filter 1 and Filter 2 keep all of N,
+    // and Filter 3 removes 4 and 5 but keeps {1,2,3}, so that
+    // |N| is still >= best_clique_size, and the density computation
+    // is done on the final N only.
+    //
+    // The maximum clique containing 0 is {0,1,2,3} of size 4.
+
+    AdjList G(6);
+
+    // Root connections: 0 -- {1,2,3,4,5}
+    add_undirected_edge(G, 0, 1);
+    add_undirected_edge(G, 0, 2);
+    add_undirected_edge(G, 0, 3);
+    add_undirected_edge(G, 0, 4);
+    add_undirected_edge(G, 0, 5);
+
+    // Strong core: K3 on {1,2,3}
+    add_undirected_edge(G, 1, 2);
+    add_undirected_edge(G, 1, 3);
+    add_undirected_edge(G, 2, 3);
+
+    // Weak neighbors: 4 and 5 connect lightly into N
+    add_undirected_edge(G, 1, 4); // 4 sees only {1} in N
+    add_undirected_edge(G, 2, 5); // 5 sees only {2} in N
+
+    // Large enough core and increasing reorder.
+    std::vector<int32_t> core(6, 10);
+    std::vector<int32_t> reorder = {0, 1, 2, 3, 4, 5};
+
+    int32_t best_clique_size = 3; // Current known clique size
+    double phi = 0.5;             // Middle value; exact branch choice is internal
+
+    NeighborSearch(G, /*v=*/0, core, reorder, best_clique_size, phi);
+
+    // The maximum clique containing 0 is {0,1,2,3} of size 4.
+    // This test ensures that, even when Filter 3 drops some vertices
+    // but still leaves |N| >= best_clique_size, the algorithm
+    // correctly finds the larger clique without being confused by
+    // stale density computations.
+    EXPECT_EQ(best_clique_size, 4);
+}
+
+
 // Dense case: density > phi, so the k-Vertex-Cover branch is used.
 TEST(NeighborSearchDensity, DenseCaseUsesKVertexCoverBranchAndFindsClique) {
     // Same K4 graph as before.
@@ -200,6 +253,7 @@ TEST(NeighborSearchDensity, SparseCaseUsesMaximumCliqueFallback) {
 
     EXPECT_EQ(best_clique_size, 4);
 }
+
 
 // ---------------------------------------------------------------------------
 // Algorithm-selection density boundary tests
@@ -281,4 +335,3 @@ TEST(NeighborSearchAlgorithmChoice, PhiAboveDensityUsesFallbackAndFindsMaxClique
 
     EXPECT_EQ(best_clique_size, 3);
 }
-
