@@ -22,10 +22,9 @@ bron_kerbosch_all(const AdjMap& G);
 
 /// Bron–Kerbosch-based search for a single maximum clique.
 /// - Input: same adjacency map as above.
-/// - initial_best_size: optional lower bound for pruning (skip branches that can't beat this size)
 /// - Output: one maximum clique (largest size found).
 ///   If the graph is empty, returns an empty vector.
 std::vector<int>
-bron_kerbosch_maximum(const AdjMap& G, int initial_best_size = 0);
+bron_kerbosch_maximum(const AdjMap& G);
 
 } // namespace lazymc

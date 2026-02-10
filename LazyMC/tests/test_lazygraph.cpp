@@ -1,23 +1,15 @@
 #include <gtest/gtest.h>
 #include "lazymc/lazygraph.h"
-#include "lazymc/incumbent.h"
 #include <algorithm>
 
 using lazymc::AdjList;
 using lazymc::LazyGraph;
 
-class LazyGraphTestFixture : public ::testing::Test {
-protected:
-    void SetUp() override {
-        lazymc::reset_incumbent();
-    }
-};
-
 // ------------------------------------------------------------
 // Test 1: Basic construction and simple mapping
 // ------------------------------------------------------------
 
-TEST_F(LazyGraphTestFixture, ConstructionAndAccessors) {
+TEST(LazyGraphBasic, ConstructionAndAccessors) {
     // Simple original graph:
     // 0: 1,2
     // 1: 0
@@ -93,7 +85,7 @@ TEST_F(LazyGraphTestFixture, ConstructionAndAccessors) {
 // Test 2: Non-trivial permutation and per-vertex containers
 // ------------------------------------------------------------
 
-TEST_F(LazyGraphTestFixture, PermutationMappingAndContainers) {
+TEST(LazyGraphBasic, PermutationMappingAndContainers) {
     // Original graph G:
     //
     // 0: 1,2
@@ -230,7 +222,7 @@ TEST_F(LazyGraphTestFixture, PermutationMappingAndContainers) {
 // Test 3: Isolated vertex and core_only checks
 // ------------------------------------------------------------
 
-TEST_F(LazyGraphTestFixture, IsolatedVertexAndCoreOnly) {
+TEST(LazyGraphBasic, IsolatedVertexAndCoreOnly) {
     // Graph with one isolated vertex:
     // 0: -
     AdjList G = {
@@ -265,7 +257,7 @@ TEST_F(LazyGraphTestFixture, IsolatedVertexAndCoreOnly) {
 // Test 4: Lazy construction – sorted triggers hashed build
 // ------------------------------------------------------------
 
-TEST_F(LazyGraphTestFixture, SortedBuildsFromHashedLazy) {
+TEST(LazyGraphBasic, SortedBuildsFromHashedLazy) {
     // Simple nontrivial graph
     // 0: 1
     // 1: 0,2
@@ -301,7 +293,7 @@ TEST_F(LazyGraphTestFixture, SortedBuildsFromHashedLazy) {
 // Test 5: Stability under multiple calls
 // ------------------------------------------------------------
 
-TEST_F(LazyGraphTestFixture, MultipleCallsStability) {
+TEST(LazyGraphBasic, MultipleCallsStability) {
     // Simple triangle:
     // 0: 1,2
     // 1: 0,2

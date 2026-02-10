@@ -1,5 +1,4 @@
 #include "lazymc/bk.h"
-#include "lazymc/incumbent.h"
 
 #include <algorithm> // std::find, std::binary_search, std::min
 #include <vector>
@@ -115,81 +114,20 @@ int choose_pivot(const AdjMap& G,
     return pivot;
 }
 
-// Greedy coloring of vertices in P to get upper bound on clique size.
-// Returns the number of colors used (which is an upper bound on max clique in G[P]).
-std::size_t greedy_color_bound(const AdjMap& G, const std::vector<int>& P) {
-    if (P.empty()) return 0;
-    
-    std::vector<int> color(P.size(), -1);
-    std::size_t num_colors = 0;
-    
-    // Map from vertex to index in P
-    std::map<int, std::size_t> vertex_to_idx;
-    for (std::size_t i = 0; i < P.size(); ++i) {
-        vertex_to_idx[P[i]] = i;
-    }
-    
-    std::vector<int> empty_neighbors;
-    
-    for (std::size_t i = 0; i < P.size(); ++i) {
-        int v = P[i];
-        const auto& Nv = neighbors_or_empty(G, v, empty_neighbors);
-        
-        // Find colors used by neighbors in P
-        std::vector<bool> used_colors(num_colors + 1, false);
-        for (int u : Nv) {
-            auto it = vertex_to_idx.find(u);
-            if (it != vertex_to_idx.end() && color[it->second] >= 0) {
-                used_colors[static_cast<std::size_t>(color[it->second])] = true;
-            }
-        }
-        
-        // Find smallest available color
-        int c = 0;
-        while (static_cast<std::size_t>(c) < used_colors.size() && used_colors[static_cast<std::size_t>(c)]) {
-            ++c;
-        }
-        
-        color[i] = c;
-        if (static_cast<std::size_t>(c) >= num_colors) {
-            num_colors = static_cast<std::size_t>(c) + 1;
-        }
-    }
-    
-    return num_colors;
-}
-
 // Bron–Kerbosch with pivot heuristic, searching only for a maximum clique.
 void bron_kerbosch_recursive_pivot_max(const AdjMap& G,
                                        std::vector<int>& R,
                                        std::vector<int>& P,
                                        std::vector<int>& X,
                                        std::vector<int>& best) {
-    // Use global incumbent for tighter pruning
-    const std::size_t global_best = static_cast<std::size_t>(g_best_size.load(std::memory_order_relaxed));
-    const std::size_t current_best = std::max(best.size(), global_best);
-    
-    // Quick bound: even if we add all of P to R, can't beat best.
-    if (R.size() + P.size() <= current_best) {
+    // Simple bound: even if we add all of P to R, can't beat best.
+    if (R.size() + P.size() <= best.size()) {
         return;
-    }
-    
-    // Tighter bound using greedy coloring (only if P is not too large)
-    if (P.size() <= 100) {
-        std::size_t color_bound = greedy_color_bound(G, P);
-        if (R.size() + color_bound <= current_best) {
-            return;
-        }
     }
 
     if (P.empty() && X.empty()) {
         if (R.size() > best.size()) {
             best = R;
-            // Update global incumbent for cross-branch pruning
-            if (R.size() > global_best) {
-                std::vector<int32_t> clique_copy(R.begin(), R.end());
-                try_update_incumbent(std::move(clique_copy));
-            }
         }
         return;
     }
@@ -214,7 +152,10 @@ void bron_kerbosch_recursive_pivot_max(const AdjMap& G,
         }
     }
 
-    for (int v : candidates) {
+    // Iterate over a copy, but we will update P and X along the way.
+    std::vector<int> candidates_copy = candidates;
+
+    for (int v : candidates_copy) {
         R.push_back(v);
 
         const auto& Nv = neighbors_or_empty(G, v, empty_neighbors);
@@ -259,21 +200,12 @@ std::vector<std::vector<int>> bron_kerbosch_all(const AdjMap& G) {
 
 // ======================= Public API: maximum clique ========================
 
-std::vector<int> bron_kerbosch_maximum(const AdjMap& G, int initial_best_size) {
+std::vector<int> bron_kerbosch_maximum(const AdjMap& G) {
     std::vector<int> best;
 
     if (G.empty()) {
         return best; // no vertices, no clique
     }
-
-    // Early prune: if graph can't possibly beat initial_best_size, return empty
-    if (static_cast<int>(G.size()) <= initial_best_size) {
-        return best;
-    }
-
-    // Initialize best with a dummy size so pruning kicks in immediately
-    // We use resize to set the size without actual vertices (they won't be returned)
-    best.resize(static_cast<std::size_t>(initial_best_size));
 
     std::vector<int> P;
     P.reserve(G.size());
@@ -281,26 +213,12 @@ std::vector<int> bron_kerbosch_maximum(const AdjMap& G, int initial_best_size) {
         P.push_back(v);
     }
 
-    // Keep P sorted for efficient intersection
     std::sort(P.begin(), P.end());
 
     std::vector<int> R; // current clique
     std::vector<int> X; // excluded vertices
 
     bron_kerbosch_recursive_pivot_max(G, R, P, X, best);
-
-    // If we only have the dummy, no better clique was found
-    if (!best.empty() && best[0] == 0 && static_cast<int>(best.size()) == initial_best_size) {
-        // Check if it's the dummy (all zeros)
-        bool is_dummy = true;
-        for (int v : best) {
-            if (v != 0) { is_dummy = false; break; }
-        }
-        if (is_dummy && initial_best_size > 0) {
-            best.clear();
-        }
-    }
-
     return best;
 }
 

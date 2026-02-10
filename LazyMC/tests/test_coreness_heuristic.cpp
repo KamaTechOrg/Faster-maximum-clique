@@ -4,7 +4,6 @@
 #include "lazymc/determine_sort_order.h"
 #include "lazymc/lazygraph.h"
 #include "lazymc/coreness_heuristic.h"
-#include "lazymc/incumbent.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -17,13 +16,6 @@ using lazymc::KCore;
 using lazymc::DetermineSortOrder;
 using lazymc::LazyGraph;
 using lazymc::coreness_based_heuristic;
-
-class CorenessHeuristicTestFixture : public ::testing::Test {
-protected:
-    void SetUp() override {
-        lazymc::reset_incumbent();
-    }
-};
 
 static bool IsCliqueInG(const AdjList& G, const std::vector<int32_t>& C) {
     const std::size_t n = G.size();
@@ -93,7 +85,7 @@ TEST(CorenessHeuristic, NoEdgesReturnsAtMostOneVertex) {
     EXPECT_LE(C.size(), 1u);
 }
 
-TEST_F(CorenessHeuristicTestFixture, TriangleFindsCliqueOfSize3) {
+TEST(CorenessHeuristic, TriangleFindsCliqueOfSize3) {
     AdjList G = {
         {1, 2},
         {0, 2},
@@ -106,7 +98,7 @@ TEST_F(CorenessHeuristicTestFixture, TriangleFindsCliqueOfSize3) {
     EXPECT_EQ(C.size(), 3u);
 }
 
-TEST_F(CorenessHeuristicTestFixture, K4FindsCliqueOfSize4) {
+TEST(CorenessHeuristic, K4FindsCliqueOfSize4) {
     AdjList G = {
         {1,2,3},
         {0,2,3},
@@ -120,7 +112,7 @@ TEST_F(CorenessHeuristicTestFixture, K4FindsCliqueOfSize4) {
     EXPECT_EQ(C.size(), 4u);
 }
 
-TEST_F(CorenessHeuristicTestFixture, DisconnectedComponentsChoosesLargestClique) {
+TEST(CorenessHeuristic, DisconnectedComponentsChoosesLargestClique) {
     // Component A: triangle (0,1,2)
     // Component B: edge (3,4)
     // Component C: isolated (5)
@@ -140,7 +132,7 @@ TEST_F(CorenessHeuristicTestFixture, DisconnectedComponentsChoosesLargestClique)
     EXPECT_EQ(C.size(), 3u);
 }
 
-TEST_F(CorenessHeuristicTestFixture, CliqueWithTailStillFindsClique) {
+TEST(CorenessHeuristic, CliqueWithTailStillFindsClique) {
     // K4 on {0,1,2,3}, plus a tail 3-4-5 path
     AdjList G = {
         {1,2,3},      // 0
@@ -158,6 +150,26 @@ TEST_F(CorenessHeuristicTestFixture, CliqueWithTailStillFindsClique) {
     EXPECT_GE(C.size(), 4u); // Should at least find the K4
 }
 
+TEST(CorenessHeuristic, DeterministicAcrossCalls) {
+    AdjList G = {
+        {1,2,3},
+        {0,2},
+        {0,1,3},
+        {0,2},
+        {} // isolated
+    };
+
+    auto built = BuildHFromAlgo1Pieces(G);
+    auto A = coreness_based_heuristic(built.H, built.core_H);
+    auto B = coreness_based_heuristic(built.H, built.core_H);
+
+    EXPECT_TRUE(IsCliqueInG(G, A));
+    EXPECT_TRUE(IsCliqueInG(G, B));
+
+    std::sort(A.begin(), A.end());
+    std::sort(B.begin(), B.end());
+    EXPECT_EQ(A, B);
+}
 
 
 #include <random>

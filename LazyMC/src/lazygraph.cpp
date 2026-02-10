@@ -1,8 +1,5 @@
 #include "lazymc/lazygraph.h"
-#include "lazymc/incumbent.h"
-
 #include <algorithm>
-#include <cstddef>
 
 namespace lazymc {
 
@@ -21,12 +18,12 @@ LazyGraph::LazyGraph(const AdjList& G,
 {
     const std::size_t n = relabel_to_original_.size();
 
+    // Initialize flags: all zero → no neighborhoods built yet
+    flags_.assign(n, static_cast<std::uint8_t>(0));
+
+    // Allocate per-vertex containers for hashed and sorted neighborhoods
     hashed_.resize(n);
     sorted_.resize(n);
-
-    // Allocate once_flag arrays (default constructed)
-    hashed_once_ = std::make_unique<std::once_flag[]>(n);
-    sorted_once_ = std::make_unique<std::once_flag[]>(n);
 }
 
 // ------------------------------------------------------------
@@ -62,15 +59,17 @@ const std::vector<int32_t>& LazyGraph::core_values() const noexcept {
 }
 
 // ------------------------------------------------------------
-// Neighborhood access (thread-safe lazy)
+// Neighborhood access (lazy)
 // ------------------------------------------------------------
 
 LazyGraph::NeighborHash& LazyGraph::hashed_neighbors(int32_t v) {
     const std::size_t idx = static_cast<std::size_t>(v);
 
-    std::call_once(hashed_once_[idx], [this, v]() {
+    // If hashed neighbors not built yet, build them now
+    if ((flags_[idx] & 0x1u) == 0u) {
         build_hashed(v);
-    });
+        flags_[idx] |= 0x1u;  // Mark hashed as built
+    }
 
     return hashed_[idx];
 }
@@ -78,14 +77,11 @@ LazyGraph::NeighborHash& LazyGraph::hashed_neighbors(int32_t v) {
 const LazyGraph::NeighborArray& LazyGraph::sorted_neighbors(int32_t v) {
     const std::size_t idx = static_cast<std::size_t>(v);
 
-    // build_hashed(v) must happen before build_sorted(v)
-    std::call_once(hashed_once_[idx], [this, v]() {
-        build_hashed(v);
-    });
-
-    std::call_once(sorted_once_[idx], [this, v]() {
+    // If sorted neighbors not built yet, build them now
+    if ((flags_[idx] & 0x2u) == 0u) {
         build_sorted(v);
-    });
+        flags_[idx] |= 0x2u;  // Mark sorted as built
+    }
 
     return sorted_[idx];
 }
@@ -97,21 +93,28 @@ const LazyGraph::NeighborArray& LazyGraph::sorted_neighbors(int32_t v) {
 void LazyGraph::build_hashed(int32_t v) {
     const std::size_t idx = static_cast<std::size_t>(v);
 
+    // Clear existing data (if any)
     hashed_[idx].clear();
 
+    // Convert v from H-index to original G-index
     const int32_t v_G = relabel_to_original_[idx];
-    const auto& neighbors_G = (*G_)[static_cast<std::size_t>(v_G)];
-    const int32_t incumbent = g_best_size.load(std::memory_order_relaxed);
-    
 
+    // Access neighbors of v in the original graph
+    const auto& neighbors_G = (*G_)[static_cast<std::size_t>(v_G)];
+
+    // Convert each neighbor from G-index to H-index and store
     for (int32_t u_G : neighbors_G) {
         const std::size_t u_idx = static_cast<std::size_t>(u_G);
+
+        // Safety check: ensure mapping is within bounds
         if (u_idx >= original_to_relabel_.size()) {
             continue;
         }
 
         int32_t u_H = original_to_relabel_[u_idx];
-        if (u_H >= 0 && core_[static_cast<std::size_t>(u_H)] >= incumbent) {
+
+        // If mapping exists (should be valid in a consistent relabeling), insert into hash
+        if (u_H >= 0) {
             hashed_[idx].insert(u_H);
         }
     }
@@ -120,10 +123,19 @@ void LazyGraph::build_hashed(int32_t v) {
 void LazyGraph::build_sorted(int32_t v) {
     const std::size_t idx = static_cast<std::size_t>(v);
 
+    // Start from a clean vector
     sorted_[idx].clear();
 
-    // hashed_[idx] is guaranteed built before build_sorted runs
+    // Ensure hashed neighbors are built so we can reuse them
+    if ((flags_[idx] & 0x1u) == 0u) {
+        build_hashed(v);
+        flags_[idx] |= 0x1u;  // Mark hashed as built
+    }
+
+    // Copy neighbors from hashed_ into a vector
     sorted_[idx].assign(hashed_[idx].begin(), hashed_[idx].end());
+
+    // Sort by H-index (degeneracy order is encoded in indices)
     std::sort(sorted_[idx].begin(), sorted_[idx].end());
 }
 

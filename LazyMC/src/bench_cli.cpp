@@ -1,5 +1,6 @@
 #include "lazymc/lazymc.h"
-#include "lazymc/pmc_adapter.h"
+#include "lazymc/bk.h"
+#include "lazymc/mcqd_adapter.h"
 
 #include <algorithm>
 #include <chrono>
@@ -12,6 +13,7 @@
 #include <vector>
 
 using AdjList = std::vector<std::vector<int32_t>>;
+using AdjMap  = lazymc::AdjMap;
 
 namespace {
 
@@ -34,10 +36,10 @@ static bool has_edge_sorted(const AdjList& G, int32_t u, int32_t v) {
 
 static bool is_clique(const AdjList& G, const std::vector<int32_t>& C) {
     for (std::size_t i = 0; i < C.size(); ++i) {
-        const int32_t a = C[i];
+        int32_t a = C[i];
         if (a < 0 || static_cast<std::size_t>(a) >= G.size()) return false;
         for (std::size_t j = i + 1; j < C.size(); ++j) {
-            const int32_t b = C[j];
+            int32_t b = C[j];
             if (b < 0 || static_cast<std::size_t>(b) >= G.size()) return false;
             if (!has_edge_sorted(G, a, b) || !has_edge_sorted(G, b, a)) return false;
         }
@@ -49,6 +51,14 @@ static std::int64_t count_edges_undirected(const AdjList& G) {
     std::int64_t m2 = 0;
     for (const auto& nbrs : G) m2 += static_cast<std::int64_t>(nbrs.size());
     return m2 / 2;
+}
+
+static AdjMap to_adjmap(const AdjList& G) {
+    AdjMap M;
+    for (std::size_t v = 0; v < G.size(); ++v) {
+        M[static_cast<int32_t>(v)] = G[v];
+    }
+    return M;
 }
 
 // Supported formats:
@@ -133,13 +143,14 @@ static AdjList read_graph(std::istream& in, bool one_based) {
     return G;
 }
 
-enum class Solver { LazyMC, PMC, All };
+enum class Solver { LazyMC, MCQD, BK, All };
 
 static Solver parse_solver(const std::string& s) {
     if (s == "lazymc") return Solver::LazyMC;
-    if (s == "pmc")    return Solver::PMC;
+    if (s == "mcqd")   return Solver::MCQD;
+    if (s == "bk")     return Solver::BK;
     if (s == "all")    return Solver::All;
-    die("Bad --solver value: " + s + " (expected lazymc|pmc|all)");
+    die("Bad --solver value: " + s + " (expected lazymc|mcqd|bk|all)");
     return Solver::All;
 }
 
@@ -157,7 +168,6 @@ int main(int argc, char** argv) {
     std::string input_path;
     bool one_based = false;
     bool print_clique = false;
-    bool profile = false;
     Solver solver = Solver::All;
 
     for (int i = 1; i < argc; ++i) {
@@ -165,20 +175,17 @@ int main(int argc, char** argv) {
         if (a == "--input" && i + 1 < argc) input_path = argv[++i];
         else if (a == "--one-based") one_based = true;
         else if (a == "--print-clique") print_clique = true;
-        else if (a == "--profile") profile = true;
         else if (a == "--solver" && i + 1 < argc) solver = parse_solver(argv[++i]);
         else if (a == "-h" || a == "--help") {
             std::cout
                 << "Usage:\n"
-                << "  bench_cli --input <file> [--one-based] [--print-clique] [--profile] [--solver <name>]\n"
-                << "\n"
-                << "Options:\n"
-                << "  --profile        Show detailed profiling for each stage (LazyMC only)\n"
+                << "  bench_cli --input <file> [--one-based] [--print-clique] [--solver <name>]\n"
                 << "\n"
                 << "Solvers:\n"
                 << "  --solver all     (default)\n"
                 << "  --solver lazymc\n"
-                << "  --solver pmc\n"
+                << "  --solver mcqd\n"
+                << "  --solver bk\n"
                 << "\nFormats:\n"
                 << "  Edge list: n m \\n u v \\n ...\n"
                 << "  DIMACS:    p edge n m \\n e u v \\n ...\n";
@@ -201,17 +208,7 @@ int main(int argc, char** argv) {
     // ---- LazyMC ----
     if (solver == Solver::LazyMC || solver == Solver::All) {
         std::vector<int32_t> C;
-        double ms = 0.0;
-        
-        if (profile) {
-            // Use profiled version
-            lazymc::ProfilingResult res = lazymc::LazyMC_run_profiled(G);
-            C = res.final_clique;
-            ms = res.total_time_ms;
-            res.print_summary();
-        } else {
-            ms = time_ms([&]() { C = lazymc::LazyMC_run(G); });
-        }
+        const double ms = time_ms([&]() { C = lazymc::LazyMC_run(G); });
 
         const bool ok = is_clique(G, C);
         std::cout << "[LazyMC] clique_size=" << C.size()
@@ -225,23 +222,39 @@ int main(int argc, char** argv) {
         }
     }
 
-    // ---- PMC ----
-    if (solver == Solver::PMC || solver == Solver::All) {
-        lazymc::PmcResult pmc_res;
+    // ---- MCQD ----
+    if (solver == Solver::MCQD || solver == Solver::All) {
+        lazymc::McqdResult mcqd_res;
+        const double ms = time_ms([&]() { mcqd_res = lazymc::mcqd_max_clique(G, 0.025); });
 
-        const double ms = time_ms([&]() {
-            pmc_res = lazymc::pmc_max_clique(G, /*index_offset=*/0);
-        });
-
-        const bool ok = is_clique(G, pmc_res.clique);
-        std::cout << "[PMC]   clique_size=" << pmc_res.clique.size()
+        const bool ok = is_clique(G, mcqd_res.clique);
+        std::cout << "[MCQD]  clique_size=" << mcqd_res.clique.size()
                   << " time_ms=" << ms
                   << " valid=" << (ok ? "yes" : "NO")
-                  << " (baseline)\n";
+                  << " (exact baseline)\n";
 
         if (print_clique) {
-            std::cout << "[PMC] clique:";
-            for (int32_t v : pmc_res.clique) std::cout << " " << v;
+            std::cout << "[MCQD] clique:";
+            for (int32_t v : mcqd_res.clique) std::cout << " " << v;
+            std::cout << "\n";
+        }
+    }
+
+    // ---- BK ----
+    if (solver == Solver::BK || solver == Solver::All) {
+        AdjMap M = to_adjmap(G);
+
+        std::vector<int32_t> Cb;
+        const double ms = time_ms([&]() { Cb = lazymc::bron_kerbosch_maximum(M); });
+
+        const bool ok = is_clique(G, Cb);
+        std::cout << "[BK]    clique_size=" << Cb.size()
+                  << " time_ms=" << ms
+                  << " valid=" << (ok ? "yes" : "NO") << "\n";
+
+        if (print_clique) {
+            std::cout << "[BK] clique:";
+            for (int32_t v : Cb) std::cout << " " << v;
             std::cout << "\n";
         }
     }

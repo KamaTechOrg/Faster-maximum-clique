@@ -1,32 +1,24 @@
 #pragma once
 
 #include <cstdint>
-#include <mutex>        // std::once_flag, std::call_once
-#include <memory>       // std::unique_ptr
-#include <unordered_set>
 #include <vector>
+#include <unordered_set>
+// #include <mutex>   // not needed for now
+// #include <atomic>  // not needed for now
 
 namespace lazymc {
-
-// Counts |N ∩ neighbors(w)| using marking.
-// mark[x] == stamp  <=>  x ∈ N
-inline int32_t count_marked_neighbors(
-    const std::vector<int32_t>& neighbors,
-    const std::vector<int32_t>& mark,
-    int32_t stamp)
-{
-    int32_t cnt = 0;
-    for (int32_t u : neighbors) {
-        if (mark[u] == stamp) {
-            ++cnt;
-        }
-    }
-    return cnt;
-}
 
 // Original adjacency list: vertices labeled 0..n-1.
 using AdjList = std::vector<std::vector<int32_t>>;
 
+/**
+ * LazyGraph
+ *
+ * A lazy, filtered, hashed, relabelled graph representation
+ * as described in the LazyMC paper (Algorithm 2).
+ *
+ * For now, this implementation assumes single-threaded use.
+ */
 class LazyGraph {
 public:
     using NeighborHash  = std::unordered_set<int32_t>;
@@ -37,13 +29,8 @@ public:
               const std::vector<int32_t>& original_to_relabel,
               const std::vector<int32_t>& core);
 
-    // once_flag is non-copyable/non-movable → disallow copy/move
-    LazyGraph(const LazyGraph&) = delete;
-    LazyGraph& operator=(const LazyGraph&) = delete;
-    LazyGraph(LazyGraph&&) = delete;
-    LazyGraph& operator=(LazyGraph&&) = delete;
-
     // ---------- basic information ----------
+
     std::size_t num_vertices() const noexcept;
     const AdjList& original_graph() const noexcept;
 
@@ -54,29 +41,45 @@ public:
     int32_t to_relabelled(int32_t v_G) const;
 
     const std::vector<int32_t>& core_values() const noexcept;
-    int32_t clique_lower_bound() const noexcept; // if implemented elsewhere
+    int32_t clique_lower_bound() const noexcept;
 
     // ---------- lazy neighborhood access ----------
+
     NeighborHash& hashed_neighbors(int32_t v);
     const NeighborArray& sorted_neighbors(int32_t v);
 
 private:
+    // Lazy builders (Algorithm 2) – to be implemented.
     void build_hashed(int32_t v);
     void build_sorted(int32_t v);
 
 private:
+    // Pointer to original graph (not owned).
     const AdjList* G_ = nullptr;
 
+    // Reordering mappings:
+    //   relabel_to_original_[v_H] = v_G
+    //   original_to_relabel_[v_G] = v_H
     std::vector<int32_t> relabel_to_original_;
     std::vector<int32_t> original_to_relabel_;
+
+    // Coreness array c[v] in H-labeling.
     std::vector<int32_t> core_;
 
-    std::vector<NeighborHash>  hashed_;
+    // Flags per vertex:
+    // bit 0 (1) = hashed already created
+    // bit 1 (2) = sorted already created
+    // For now, single-threaded, so no atomics.
+    std::vector<std::uint8_t> flags_;
+
+    // Hashed (unordered_set) representation.
+    std::vector<NeighborHash> hashed_;
+
+    // Sorted (vector) representation.
     std::vector<NeighborArray> sorted_;
 
-    // Thread-safe lazy init flags (array, not vector)
-    std::unique_ptr<std::once_flag[]> hashed_once_;
-    std::unique_ptr<std::once_flag[]> sorted_once_;
+    // NOTE: no per-vertex mutexes for now; single-threaded only.
+    // std::vector<std::mutex> locks_;
 };
 
 } // namespace lazymc

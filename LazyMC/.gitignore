@@ -13,16 +13,11 @@ CMakeCache.txt
 cmake_install.cmake
 Makefile
 build-linux/
-tests/
-Testing/
-build-wsl/
-convert_so_stream.py
 
 # IDEs
 .vscode/
 .vs/
 .idea/
-.claude/
 
 # OS
 Thumbs.db

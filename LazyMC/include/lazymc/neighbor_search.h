@@ -1,18 +1,22 @@
 #pragma once
+
 #include <cstdint>
 #include <vector>
 
+#include "lazymc/lazygraph.h"
+
 namespace lazymc {
 
-class LazyGraph;
-
-// Returns true iff found a clique strictly larger than incumbent_size.
-// If true, writes the found clique (in G-labeling) into out_clique_G.
-bool NeighborSearch(LazyGraph& H,
+// Algorithm 8: search the right-neighborhood of vH (H-labeling).
+// - H: LazyGraph (H-labeling)
+// - vH: vertex in H-labeling
+// - core_H: coreness array in H-labeling
+// - best_clique_G: incumbent clique in ORIGINAL G-labeling (updated if improved)
+// - phi: density threshold (0..1 typically, but your tests also use >1)
+void NeighborSearch(LazyGraph& H,
                     int32_t vH,
                     const std::vector<int32_t>& core_H,
-                    int32_t incumbent_size,
-                    double phi,
-                    std::vector<int32_t>& out_clique_G);
+                    std::vector<int32_t>& best_clique_G,
+                    double phi);
 
 } // namespace lazymc
