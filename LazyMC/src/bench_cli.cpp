@@ -1,4 +1,5 @@
 #include "lazymc/lazymc.h"
+#include "lazymc/bk_bitset.h"
 #include "lazymc/pmc_adapter.h"
 
 #include <algorithm>
@@ -216,7 +217,9 @@ int main(int argc, char** argv) {
         const bool ok = is_clique(G, C);
         std::cout << "[LazyMC] clique_size=" << C.size()
                   << " time_ms=" << ms
-                  << " valid=" << (ok ? "yes" : "NO") << "\n";
+                  << " valid=" << (ok ? "yes" : "NO")
+                  << " bk_nodes=" << lazymc::g_bk_nodes.load()
+                  << " bk_ms=" << lazymc::g_bk_ns.load() / 1e6 << "\n";
 
         if (print_clique) {
             std::cout << "[LazyMC] clique:";

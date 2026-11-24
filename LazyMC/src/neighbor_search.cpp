@@ -3,6 +3,9 @@
 #include "lazymc/k_vertex_cover.h"
 #include "lazymc/intersect_functions.h"
 #include "lazymc/bk.h"
+#include "lazymc/bk_bitset.h"
+#include <chrono>
+#include <cstdlib>
 #include "lazymc/lazygraph.h"
 #include "lazymc/kcore.h"
 
@@ -131,6 +134,24 @@ std::vector<int32_t> maximum_clique_induced(
         return {};
     }
     
+    const auto bk_t0 = std::chrono::steady_clock::now();
+    struct BkTimer {
+        std::chrono::steady_clock::time_point t0;
+        ~BkTimer() {
+            lazymc::g_bk_ns.fetch_add(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - t0).count(), std::memory_order_relaxed);
+        }
+    } bk_timer{bk_t0};
+
+    static const bool use_bitset = [] {
+        const char* e = std::getenv("LAZYMC_BITSET");
+        return e && e[0] == '1';
+    }();
+    if (use_bitset) {
+        std::sort(filtered_subset.begin(), filtered_subset.end());
+        return lazymc::bron_kerbosch_maximum_bitset(G, filtered_subset, initial_best_size);
+    }
+
     // Rebuild in_subset for filtered vertices
     std::fill(in_subset.begin(), in_subset.end(), 0);
     for (int32_t x : filtered_subset) {

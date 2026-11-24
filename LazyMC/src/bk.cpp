@@ -1,5 +1,6 @@
 #include "lazymc/bk.h"
 #include "lazymc/incumbent.h"
+#include "lazymc/bk_bitset.h"
 
 #include <algorithm> // std::find, std::binary_search, std::min
 #include <vector>
@@ -165,6 +166,7 @@ void bron_kerbosch_recursive_pivot_max(const AdjMap& G,
                                        std::vector<int>& P,
                                        std::vector<int>& X,
                                        std::vector<int>& best) {
+    g_bk_nodes.fetch_add(1, std::memory_order_relaxed);
     // Use global incumbent for tighter pruning
     const std::size_t global_best = static_cast<std::size_t>(g_best_size.load(std::memory_order_relaxed));
     const std::size_t current_best = std::max(best.size(), global_best);
