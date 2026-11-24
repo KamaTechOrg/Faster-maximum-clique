@@ -3,6 +3,7 @@
 // Only the set representation differs: P, X and N(v) are bit vectors, so
 // "P ∩ N(v)" is a word-wise AND and |.| is popcount.
 #include "lazymc/bk_bitset.h"
+#include "lazymc/bitops.h"
 #include "lazymc/incumbent.h"
 
 #include <algorithm>
@@ -32,12 +33,12 @@ struct BitBK {
 
     static int popcount(const Word* s, int nw) {
         int c = 0;
-        for (int i = 0; i < nw; ++i) c += __builtin_popcountll(s[i]);
+        for (int i = 0; i < nw; ++i) c += popcount64(s[i]);
         return c;
     }
     int and_count(const Word* a, const Word* b) const {
         int c = 0;
-        for (int i = 0; i < nw; ++i) c += __builtin_popcountll(a[i] & b[i]);
+        for (int i = 0; i < nw; ++i) c += popcount64(a[i] & b[i]);
         return c;
     }
 
@@ -53,7 +54,7 @@ struct BitBK {
             Q = U;
             for (int i = 0; i < nw; ++i) {
                 while (Q[i]) {
-                    const int b = __builtin_ctzll(Q[i]);
+                    const int b = ctz64(Q[i]);
                     const int v = i * 64 + b;
                     Q[i] &= Q[i] - 1;
                     U[i] &= ~(Word{1} << b);
@@ -95,7 +96,7 @@ struct BitBK {
             for (int i = 0; i < nw; ++i) {
                 Word w = (*S)[i];
                 while (w) {
-                    const int u = i * 64 + __builtin_ctzll(w);
+                    const int u = i * 64 + ctz64(w);
                     w &= w - 1;
                     const int c = and_count(row(u), P.data());
                     if (c > max_deg) { max_deg = c; pivot = u; }
@@ -109,7 +110,7 @@ struct BitBK {
 
         for (int i = 0; i < nw; ++i) {
             while (cand[i]) {
-                const int b = __builtin_ctzll(cand[i]);
+                const int b = ctz64(cand[i]);
                 const int v = i * 64 + b;
                 cand[i] &= cand[i] - 1;
                 const Word* r = row(v);

@@ -10,6 +10,7 @@
 // where C[v] is row v of the complement adjacency matrix.
 #include "lazymc/k_vertex_cover_bitset.h"
 #include "lazymc/bk_bitset.h"
+#include "lazymc/bitops.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -50,7 +51,7 @@ inline int first_nbr(const Ctx& c, const State& s, int v, const std::vector<Word
     for (int i = 0; i < c.nw; ++i) {
         Word w = r[i] & s.A[i];
         if (exclude) w &= ~(*exclude)[i];
-        if (w) return i * 64 + __builtin_ctzll(w);
+        if (w) return i * 64 + ctz64(w);
     }
     return -1;
 }
@@ -58,7 +59,7 @@ inline int first_nbr(const Ctx& c, const State& s, int v, const std::vector<Word
 template <class F> inline void for_each(const std::vector<Word>& s, int nw, F f) {
     for (int i = 0; i < nw; ++i) {
         Word w = s[i];
-        while (w) { f(i * 64 + __builtin_ctzll(w)); w &= w - 1; }
+        while (w) { f(i * 64 + ctz64(w)); w &= w - 1; }
     }
 }
 
@@ -72,7 +73,7 @@ inline bool take(const Ctx& c, State& s, int v) {
     const Word* r = c.row(v);
     for (int i = 0; i < c.nw; ++i) {
         Word w = r[i] & s.A[i];
-        while (w) { --s.d[static_cast<std::size_t>(i * 64 + __builtin_ctzll(w))]; w &= w - 1; }
+        while (w) { --s.d[static_cast<std::size_t>(i * 64 + ctz64(w))]; w &= w - 1; }
     }
     return true;
 }
@@ -86,7 +87,7 @@ bool kernelize(const Ctx& c, State& s) {
         for (int i = 0; i < c.nw; ++i) {
             Word w = s.A[i];
             while (w) {
-                const int v = i * 64 + __builtin_ctzll(w);
+                const int v = i * 64 + ctz64(w);
                 w &= w - 1;
                 if (deg(c, s, v) == 0) { clr(s.A, v); changed = true; }
             }
@@ -172,7 +173,7 @@ bool solve(Ctx& c, State& s) {
             for (int i = 0; i < c.nw && ok; ++i) {
                 Word w = r[i] & s.A[i];
                 while (w && ok) {
-                    ok = take(c, child, i * 64 + __builtin_ctzll(w));
+                    ok = take(c, child, i * 64 + ctz64(w));
                     w &= w - 1;
                 }
             }
@@ -223,7 +224,7 @@ k_vertex_cover_res k_vertex_cover_induced_complement_bitset(const AdjList& G,
     s.d.resize(static_cast<std::size_t>(c.n));
     for (int v = 0; v < c.n; ++v) {
         int dv = 0;
-        for (int i = 0; i < c.nw; ++i) dv += __builtin_popcountll(c.row(v)[i]);
+        for (int i = 0; i < c.nw; ++i) dv += popcount64(c.row(v)[i]);
         s.d[static_cast<std::size_t>(v)] = dv;
     }
 
