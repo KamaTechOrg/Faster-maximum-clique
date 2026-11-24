@@ -4,6 +4,7 @@
 #include "lazymc/intersect_functions.h"
 #include "lazymc/bk.h"
 #include "lazymc/bk_bitset.h"
+#include "lazymc/k_vertex_cover_bitset.h"
 #include <chrono>
 #include <cstdlib>
 #include "lazymc/lazygraph.h"
@@ -285,7 +286,17 @@ bool NeighborSearch(LazyGraph& H,
     if (density > phi) {
         const int32_t k = static_cast<int32_t>(N_G.size()) - best;
 
-        k_vertex_cover_res res = k_vertex_cover_induced_complement(G, N_G, k);
+        const auto kvc_t0 = std::chrono::steady_clock::now();
+        static const bool use_bitset_kvc = [] {
+            const char* e = std::getenv("LAZYMC_BITSET_KVC");
+            return e && e[0] == '1';
+        }();
+        k_vertex_cover_res res = use_bitset_kvc
+            ? lazymc::k_vertex_cover_induced_complement_bitset(G, N_G, k)
+            : k_vertex_cover_induced_complement(G, N_G, k);
+        lazymc::g_kvc_calls.fetch_add(1, std::memory_order_relaxed);
+        lazymc::g_kvc_ns.fetch_add(std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - kvc_t0).count(), std::memory_order_relaxed);
 
         // Case 1: aborted → fallback to BK
         if (res.aborted) {

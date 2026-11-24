@@ -76,6 +76,7 @@ endif()
 add_library(lazymc STATIC
   src/bk.cpp
   src/bk_bitset.cpp
+  src/k_vertex_cover_bitset.cpp
   src/degree_based_heuristic.cpp
   src/intersect_functions.cpp
   src/k_vertex_cover.cpp

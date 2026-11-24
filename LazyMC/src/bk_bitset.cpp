@@ -14,6 +14,7 @@ namespace lazymc {
 
 std::atomic<long long> g_bk_nodes{0};
 std::atomic<long long> g_bk_ns{0};
+std::atomic<long long> g_kvc_calls{0}, g_kvc_aborts{0}, g_kvc_steps{0}, g_kvc_ns{0};
 
 namespace {
 

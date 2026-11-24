@@ -219,7 +219,11 @@ int main(int argc, char** argv) {
                   << " time_ms=" << ms
                   << " valid=" << (ok ? "yes" : "NO")
                   << " bk_nodes=" << lazymc::g_bk_nodes.load()
-                  << " bk_ms=" << lazymc::g_bk_ns.load() / 1e6 << "\n";
+                  << " bk_ms=" << lazymc::g_bk_ns.load() / 1e6
+                  << " kvc_calls=" << lazymc::g_kvc_calls.load()
+                  << " kvc_aborts=" << lazymc::g_kvc_aborts.load()
+                  << " kvc_steps=" << lazymc::g_kvc_steps.load()
+                  << " kvc_ms=" << lazymc::g_kvc_ns.load() / 1e6 << "\n";
 
         if (print_clique) {
             std::cout << "[LazyMC] clique:";

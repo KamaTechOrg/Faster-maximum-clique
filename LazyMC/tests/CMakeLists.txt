@@ -15,6 +15,7 @@ add_executable(lazymc_tests
   test_coreness_heuristic.cpp
   #test_systematic_search.cpp
   test_lazymc_correctness_small_random.cpp
+  test_bitset_variants.cpp
 
 )
 

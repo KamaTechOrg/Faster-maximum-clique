@@ -1,4 +1,5 @@
 #include "lazymc/k_vertex_cover.h"
+#include "lazymc/bk_bitset.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -432,6 +433,8 @@ k_vertex_cover_res k_vertex_cover_adj(const AdjList& G, int32_t k) {
     bool aborted = false;
 
     const bool ok = solve(state, steps, VC_STEP_LIMIT, aborted);
+    g_kvc_steps.fetch_add(steps, std::memory_order_relaxed);
+    if (aborted) g_kvc_aborts.fetch_add(1, std::memory_order_relaxed);
 
     result.aborted = aborted;
 

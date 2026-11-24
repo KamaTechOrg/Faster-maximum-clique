@@ -12,6 +12,8 @@ using AdjList = std::vector<std::vector<int32_t>>;
 extern std::atomic<long long> g_bk_nodes;
 // Total wall time spent inside BK calls, summed over threads (ns).
 extern std::atomic<long long> g_bk_ns;
+// k-Vertex-Cover stats: calls, aborted calls, recursion steps, time (ns).
+extern std::atomic<long long> g_kvc_calls, g_kvc_aborts, g_kvc_steps, g_kvc_ns;
 
 // Same search as bron_kerbosch_maximum(), on the subgraph of G induced by
 // verts_sorted (G-labels, ascending), using bit vectors for P, X and N(v).
