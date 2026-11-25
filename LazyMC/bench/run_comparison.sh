@@ -34,7 +34,7 @@ for g in $GRAPHS; do
     run "$TO" "$COMP/dOmega/$v/bin/dOmega" -e "$el" -m 1
     l=$(echo "$RUN_OUT" | grep -F "$el" | tail -1)
     if [ $RUN_RC -eq 124 ]; then emit "$g" "dOmega-$v" - - TO
-    elif [ -n "$l" ]; then
+    elif [ -n "$l" ] && [ -n "$(echo "$l" | awk '{print $10}')" ]; then
       emit "$g" "dOmega-$v" "$(echo "$l" | awk '{print $10}')" "$(echo "$l" | awk '{printf "%.3f", $9+$11}')" ok
     else emit "$g" "dOmega-$v" - - FAIL; fi
   done

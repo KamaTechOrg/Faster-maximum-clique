@@ -9,7 +9,8 @@ for r in csv.DictReader(open(sys.argv[1])):
 paper = {r["graph"]: r for r in csv.DictReader(open(sys.argv[2]))}
 graphs = [g for g in paper if any((g, s) in ours for s in SOL)]
 def t(r): return float(r["time_s"]) if r and r["status"] == "ok" else None
-def fmt(x): return "T.O." if x is None else f"{x:.3f}"
+def st(r): return r["status"] if r else "-"
+def fmt(x, r=None): return f"{x:.3f}" if x is not None else ("OOM" if r and r["status"] == "OOM" else "T.O.")
 print("| Graph | ω | " + " | ".join(SOL) + " | fastest | bitset vs LazyMC |")
 print("|---|---|" + "---|" * (len(SOL) + 2))
 wins = {s: 0 for s in SOL}
@@ -18,7 +19,7 @@ for g in graphs:
     ok = {s: v for s, v in ts.items() if v is not None}
     best = min(ok, key=ok.get) if ok else "-"
     if ok: wins[best] += 1
-    cells = [("**" + fmt(ts[s]) + "**") if s == best else fmt(ts[s]) for s in SOL]
+    cells = [("**" + fmt(ts[s]) + "**") if s == best else fmt(ts[s], ours.get((g, s))) for s in SOL]
     a, b = ts["LazyMC"], ts["LazyMC-bitset"]
     sp = f"{a/b:.2f}x" if a and b else ("solved / T.O." if b and not a else "-")
     print(f"| {g} | {paper[g]['omega']} | " + " | ".join(cells) + f" | {best} | {sp} |")
